@@ -159,14 +159,17 @@ describe("Swap", function () {
     // get token address instances on polygon network
     const DAI_POLYGON_ADDRESS = '0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063'
     const WMATIC_ADDRESS = '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270'
+    const USDC_ADDRESS = '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'
 
+    const USDC = new ethers.Contract(USDC_ADDRESS, IERC20.abi)
     const DAI = new ethers.Contract(DAI_POLYGON_ADDRESS, IERC20.abi); 
     const WMATIC = new ethers.Contract(WMATIC_ADDRESS, IERC20.abi)
 
     // setup swap details
     const PATH = [DAI_POLYGON_ADDRESS, WMATIC_ADDRESS]
+    const WMATIC_USDC = [WMATIC_ADDRESS, USDC_ADDRESS]
     const FEE = 3000
-    const AMOUNT = ethers.utils.parseUnits('10000', 'ether') // $10,000 in DAI to WMATIC
+    const AMOUNT = ethers.utils.parseUnits('1000', 'ether') // $10,000 in DAI to WMATIC
 
     let account 
     let swapper 
@@ -187,7 +190,7 @@ describe("Swap", function () {
       })
 
       // then unlock an account
-      const UNLOCK_ACCOUNT = '0x604981db0c06ea1b37495265eda4619c8eb95a3d'
+      const UNLOCK_ACCOUNT = '0x167384319b41f7094e62f7506409eb38079abff8'
 
       await hre.network.provider.request({
         method: 'hardhat_impersonateAccount',
@@ -204,7 +207,7 @@ describe("Swap", function () {
       swapper = await Swapper.deploy(SWAP_ROUTER)
     })
 
-    it('Successfully Swaps', async () => {
+    it('Successfully Swaps DAI For WMATIC', async () => {
       const daiBalanceBefore = await DAI.connect(account).balanceOf(account.address);
       const wmaticBalanceBefore = await WMATIC.connect(account).balanceOf(account.address);
 
@@ -222,6 +225,26 @@ describe("Swap", function () {
 
       expect(daiBalanceAfter).to.be.lessThan(daiBalanceBefore)
       expect(wmaticBalanceAfter).to.be.greaterThan(wmaticBalanceBefore)
+
+    })
+    it('Successfully swaps WMATIC For USDC', async () => {
+      const wmaticBalanceBefore = await WMATIC.connect(account).balanceOf(account.address)
+      const usdcBalanceBefore = await USDC.connect(account).balanceOf(account.address);
+      
+      console.log(`\nWMATIC Balance Before: ${toEther(wmaticBalanceBefore)}`)
+      console.log(`USDC Balance After ${toEther(usdcBalanceBefore)}`)
+
+      await WMATIC.connect(account).approve(swapper.address, AMOUNT)
+      await swapper.connect(account).swap(WMATIC_USDC, FEE, AMOUNT)
+
+      const wmaticBalanceAfter = await WMATIC.connect(account).balanceOf(account.address);
+      const usdcBalanceAfter = await USDC.connect(account).balanceOf(account.address);
+
+      console.log(`WMATIC Balance After: ${toEther(wmaticBalanceAfter)}`)
+      console.log(`USDC Balance After: ${toEther(usdcBalanceAfter)}`)
+
+      expect(wmaticBalanceAfter).to.be.lessThan(wmaticBalanceBefore)
+      expect(usdcBalanceAfter).to.be.greaterThan(usdcBalanceBefore)
 
     })
 
